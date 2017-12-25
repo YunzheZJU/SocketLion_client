@@ -1,62 +1,178 @@
-#include <iostream>
-#include <WinSock2.h>
-#include <afxres.h>
+#include "main.h"
 
-using namespace std;
+SOCKET socketServer;
 
 int main() {
     cout << "Client start." << endl;
-    WORD sockVersion = MAKEWORD(2, 2);
-    WSADATA wsaData{};
+    WORD version = MAKEWORD(2, 2);
+    WSADATA data{};
 
     // Load winsocket dll
-    cout << "Loading..." << endl;
-    if (WSAStartup(sockVersion, &wsaData) == SOCKET_ERROR) {
-        cout << "Error occurred in initialization." << endl;
+    clog << "Loading..." << endl;
+    if (WSAStartup(version, &data) == SOCKET_ERROR) {
+        cerr << "Error occurred in initialization." << endl;
         return -1;
     } else {
         // Check the lowest and highest byte of the version in HEX
-        if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-            cout << "Could not find Winsock 2.2 dll." << endl;
+        if (LOBYTE(data.wVersion) != 2 || HIBYTE(data.wVersion) != 2) {
+            cerr << "Could not find a usable version of Winsock.dll." << endl;
             WSACleanup();
             return -1;
         }
     }
-    cout << "Loading...OK" << endl;
+    clog << "Loading...OK" << endl;
 
     // Create socket based on TCP
-    cout << "Creating..." << endl;
-    SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (s == INVALID_SOCKET) {
-        cout << "Error occurred in creating socket." << endl;
+    clog << "Creating..." << endl;
+    socketServer = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (socketServer == INVALID_SOCKET) {
+        cerr << "Error occurred in creating socket." << endl;
         WSACleanup();
         return -1;
     }
-    cout << "Creating...OK" << endl;
+    clog << "Creating...OK" << endl;
 
+    bool outerLoop = true;
+    char selection;
+    cout << "Welcome to SocketLion v1.0!\nEnter a number to select an item below." << endl;
+    while (outerLoop) {
+        cout << "Menu:\n[1] Connect to the server.\n[2] Exit." << endl;
+        scanf("%c", &selection);
+        getchar();
+        switch (selection) {
+            case '1':
+                if (Connect()) {
+                    cout << "Successfully connected to the server!" << endl;
+                    cout << "Your user number is [" << "1" << "], " << "1.2.3.4" << ":" << "1234" << endl;
+                    bool innerLoop = true;
+                    while (innerLoop) {
+                        cout << "Menu:\n"
+                                "[1] Request for server time.\n"
+                                "[2] Request for server name.\n"
+                                "[3] Request for online users.\n"
+                                "[4] Send a message to user X.\n"
+                                "[5] Disconnect."
+                             << endl;
+                        scanf("%c", &selection);
+                        getchar();
+                        switch (selection) {
+                            case '1':
+                                if (!GetTime()) {
+                                    cout << "Fail to get server time!" << endl;
+                                }
+                                break;
+                            case '2':
+                                if (!GetServer()) {
+                                    cout << "Fail to get server name!" << endl;
+                                }
+                                break;
+                            case '3':
+                                if (!GetList()) {
+                                    cout << "Fail to get list of online users!" << endl;
+                                }
+                                break;
+                            case '4':
+                                Request();
+                                break;
+                            case '5':
+                                if (Disconnect()) {
+                                    cout << "Successfully disconnected to the server!" << endl;
+                                }
+                                innerLoop = false;
+                                break;
+                            default:
+                                cout << "Unknown input: '" << selection << "'. Please try again." << endl;
+                                break;
+                        }
+                    }
+                }
+                break;
+            case '2':
+                outerLoop = false;
+                break;
+            default:
+                cout << "Unknown input: '" << selection << "'. Please try again." << endl;
+                break;
+        }
+    }
+    cout << "Bye." << endl;
+    return 0;
+}
+
+bool Connect() {
     // Prepare for the connection
-    sockaddr_in servAddr;
-    servAddr.sin_family = AF_INET;
-    servAddr.sin_port = htons(5555);
-    servAddr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+    sockaddr_in serverAddress{};
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(SERVER_PORT);
+    serverAddress.sin_addr.S_un.S_addr = inet_addr(SERVER_ADDRESS);
 
     // Connect to the server
-    if (connect(s, (sockaddr*) &servAddr, sizeof(servAddr)) == SOCKET_ERROR) {
-        cout << "Error occurred in Connecting." << endl;
+    if (connect(socketServer, (sockaddr *) &serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
+        cerr << "Error occurred in Connecting." << endl;
         WSACleanup();
-        return -1;
+        return false;
     }
+    return true;
+}
 
-    char buff[156];
-    int nRecv = recv(s, buff, 156, 0);
-    if (nRecv > 0) {
-        buff[nRecv] = '\0';
-        cout << "Data recieved: " << buff << endl;
-    }
-
-    closesocket(s);
+bool Disconnect() {
+    closesocket(socketServer);
     WSACleanup();
-    return 0;
+    return true;
+}
 
-    return 0;
+bool GetTime() {
+    char request[] = "ALOHA\r\n\r\n";
+    char response[256];
+    string header = "Time";
+    if (Request(request, response)) {
+        const string time = GetHeader(response, header);
+        cout << time << endl;
+        return true;
+    }
+    return false;
+}
+
+bool GetServer() {
+    char request[] = "ALOHA\r\n\r\n";
+    char response[256];
+    string header = "Server";
+    if (Request(request, response)) {
+        const string server = GetHeader(response, header);
+        cout << server << endl;
+        return true;
+    }
+    return false;
+}
+
+bool GetList() {
+    char request[] = "LIST\r\n\r\n";
+    char response[256];
+    // TODO
+    return Request(request, response);
+}
+
+bool Request() {
+    char request[] = "SEND\r\n\r\n";
+    char response[256];
+    // TODO
+    return Request(request, response);
+}
+
+bool Request(const char request[], char response[]) {
+    send(socketServer, request, strlen(request), 0);
+
+    int responseLength = recv(socketServer, response, 256, 0);
+    if (responseLength > 0) {
+        response[responseLength] = '\0';
+        clog << "Response: " << response << endl;
+    }
+
+    return true;
+}
+
+const string GetHeader(const string &response, const string &header) {
+    string stringToFind = header + ": ";
+    string temp = response.substr(response.find(stringToFind) + stringToFind.length());
+    return temp.substr(0, temp.find('\r'));
 }
