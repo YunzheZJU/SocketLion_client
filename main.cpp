@@ -4,33 +4,6 @@ SOCKET socketServer;
 
 int main() {
     cout << "Client start." << endl;
-    WORD version = MAKEWORD(2, 2);
-    WSADATA data{};
-
-    // Load winsocket dll
-    clog << "Loading..." << endl;
-    if (WSAStartup(version, &data) == SOCKET_ERROR) {
-        cerr << "Error occurred in initialization." << endl;
-        return -1;
-    } else {
-        // Check the lowest and highest byte of the version in HEX
-        if (LOBYTE(data.wVersion) != 2 || HIBYTE(data.wVersion) != 2) {
-            cerr << "Could not find a usable version of Winsock.dll." << endl;
-            WSACleanup();
-            return -1;
-        }
-    }
-    clog << "Loading...OK" << endl;
-
-    // Create socket based on TCP
-    clog << "Creating..." << endl;
-    socketServer = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (socketServer == INVALID_SOCKET) {
-        cerr << "Error occurred in creating socket." << endl;
-        WSACleanup();
-        return -1;
-    }
-    clog << "Creating...OK" << endl;
 
     bool outerLoop = true;
     char selection;
@@ -100,6 +73,34 @@ int main() {
 }
 
 bool Connect() {
+    WORD version = MAKEWORD(2, 2);
+    WSADATA data{};
+
+    // Load winsocket dll
+    clog << "Loading..." << endl;
+    if (WSAStartup(version, &data) == SOCKET_ERROR) {
+        cerr << "Error occurred in initialization: " << WSAGetLastError() << "." << endl;
+        return false;
+    } else {
+        // Check the lowest and highest byte of the version in HEX
+        if (LOBYTE(data.wVersion) != 2 || HIBYTE(data.wVersion) != 2) {
+            cerr << "Could not find a usable version of Winsock.dll: " << WSAGetLastError() << "." << endl;
+            WSACleanup();
+            return false;
+        }
+    }
+    clog << "Loading...OK" << endl;
+
+    // Create socket based on TCP
+    clog << "Creating..." << endl;
+    socketServer = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (socketServer == INVALID_SOCKET) {
+        cerr << "Error occurred in creating socket: " << WSAGetLastError() << "." << endl;
+        WSACleanup();
+        return false;
+    }
+    clog << "Creating...OK" << endl;
+
     // Prepare for the connection
     sockaddr_in serverAddress{};
     serverAddress.sin_family = AF_INET;
@@ -107,11 +108,13 @@ bool Connect() {
     serverAddress.sin_addr.S_un.S_addr = inet_addr(SERVER_ADDRESS);
 
     // Connect to the server
+    clog << "Connecting..." << endl;
     if (connect(socketServer, (sockaddr *) &serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
-        cerr << "Error occurred in Connecting." << endl;
+        cerr << "Error occurred in Connecting: " << WSAGetLastError() << "." << endl;
         WSACleanup();
         return false;
     }
+    clog << "Connecting...OK" << endl;
     return true;
 }
 
