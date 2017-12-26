@@ -1,12 +1,16 @@
 #include "main.h"
 
 SOCKET socketServer;
+string number;
+string ip;
+string port;
 
 int main() {
     cout << "Client start." << endl;
 
     bool outerLoop = true;
     char selection;
+
     cout << "Welcome to SocketLion v1.0!\nEnter a number to select an item below." << endl;
     while (outerLoop) {
         cout << "Menu:\n[1] Connect to the server.\n[2] Exit." << endl;
@@ -16,7 +20,7 @@ int main() {
             case '1':
                 if (Connect()) {
                     cout << "Successfully connected to the server!" << endl;
-                    cout << "Your user number is [" << "1" << "], " << "1.2.3.4" << ":" << "1234" << endl;
+                    cout << "Your user number is [" << number << "], " << ip << ":" << port << endl;
                     bool innerLoop = true;
                     while (innerLoop) {
                         cout << "Menu:\n"
@@ -115,7 +119,21 @@ bool Connect() {
         return false;
     }
     clog << "Connecting...OK" << endl;
-    return true;
+
+    clog << "ALOHA..." << endl;
+    char request[] = "ALOHA\r\n\r\n";
+    char response[256];
+    string headerNumber = "Number";
+    string headerIP = "IP";
+    string headerPort = "Port";
+    if (Request(request, response)) {
+        number = GetHeader(response, headerNumber);
+        ip = GetHeader(response, headerIP);
+        port = GetHeader(response, headerPort);
+        clog << "ALOHA...OK" << endl;
+        return true;
+    }
+    return false;
 }
 
 bool Disconnect() {
@@ -174,7 +192,7 @@ bool Request(const char request[], char response[]) {
     return true;
 }
 
-const string GetHeader(const string &response, const string &header) {
+string GetHeader(const string &response, const string &header) {
     string stringToFind = header + ": ";
     string temp = response.substr(response.find(stringToFind) + stringToFind.length());
     return temp.substr(0, temp.find('\r'));

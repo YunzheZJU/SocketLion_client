@@ -27,6 +27,6 @@ bool Request();
 
 bool Request(const char request[], char response[]);
 
-const string GetHeader(const string &response, const string &header);
+string GetHeader(const string &response, const string &header);
 
 #endif //SOCKETLION_CLIENT_MAIN_H
