@@ -147,7 +147,7 @@ bool GetTime() {
     char response[256];
     string header = "Time";
     if (Request(request, response)) {
-        const string time = GetHeader(response, header);
+        string time = GetHeader(response, header);
         cout << time << endl;
         return true;
     }
@@ -159,7 +159,7 @@ bool GetServer() {
     char response[256];
     string header = "Server";
     if (Request(request, response)) {
-        const string server = GetHeader(response, header);
+        string server = GetHeader(response, header);
         cout << server << endl;
         return true;
     }
@@ -169,14 +169,21 @@ bool GetServer() {
 bool GetList() {
     char request[] = "LIST\r\n\r\n";
     char response[256];
-    // TODO
-    return Request(request, response);
+    string keyword = "List of users online: \n";
+    if (Request(request, response)) {
+        string stringResponse = response;
+        string stringRequest = request;
+        string responseContent = stringResponse.substr(stringRequest.find(keyword) + keyword.length());
+        cout << responseContent << endl;
+        return true;
+    }
+    return false;
 }
 
 bool Request() {
-    char request[] = "SEND\r\n\r\n";
+    char request[] = "SEND\r\nToNumber: 0\r\nToAddress: 127.0.0.1\r\n\r\nHello";
     char response[256];
-    // TODO
+    // TODO: 提取有效信息
     return Request(request, response);
 }
 
