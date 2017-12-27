@@ -2,7 +2,7 @@
 
 SOCKET socketServer;
 string number;
-string ip;
+string address;
 string port;
 
 int main() {
@@ -20,7 +20,7 @@ int main() {
             case '1':
                 if (Connect()) {
                     cout << "Successfully connected to the server!" << endl;
-                    cout << "Your user number is [" << number << "], " << ip << ":" << port << endl;
+                    cout << "Your user number is [" << number << "], " << address << ":" << port << endl;
                     bool innerLoop = true;
                     while (innerLoop) {
                         cout << "Menu:\n"
@@ -124,11 +124,11 @@ bool Connect() {
     char request[] = "ALOHA\r\n\r\n";
     char response[256];
     string headerNumber = "Number";
-    string headerIP = "IP";
+    string headerAdress = "Address";
     string headerPort = "Port";
     if (Request(request, response)) {
         number = GetHeader(response, headerNumber);
-        ip = GetHeader(response, headerIP);
+        address = GetHeader(response, headerAdress);
         port = GetHeader(response, headerPort);
         clog << "ALOHA...OK" << endl;
         return true;
