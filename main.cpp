@@ -4,76 +4,131 @@ SOCKET socketServer;
 string number;
 string address;
 string port;
+queue<string> messageQueue;
+thread threadSend;
+thread threadReceive;
+bool stopThread = true;
 
 int main() {
     cout << "Client start." << endl;
 
-    bool outerLoop = true;
+    bool loop = true;
     char selection;
 
     cout << "Welcome to SocketLion v1.0!\nEnter a number to select an item below." << endl;
-    while (outerLoop) {
+    while (loop) {
         cout << "Menu:\n[1] Connect to the server.\n[2] Exit." << endl;
+        scanf("%c", &selection);
+        getchar();
+
+        switch (selection) {
+            case '1':
+                if (Connect()) {
+                    clog << "Thread Send starts." << endl;
+                    cout << "Successfully connected to the server!" << endl;
+                    threadSend = thread(Send);
+                    threadReceive = thread(Receive);
+                    stopThread = false;
+                }
+                break;
+            case '2':
+                loop = false;
+                break;
+            default:
+                cout << "Unknown input: '" << selection << "'. Please try again." << endl;
+                break;
+        }
+
+        while (!stopThread) {
+            // Check message
+            if (!messageQueue.empty()) {
+                string message = messageQueue.front();
+                messageQueue.pop();
+                cout << "MessageQueue: " << endl << message << endl;
+            } else {
+                Sleep(100);
+            }
+
+        }
+    }
+    if (threadReceive.joinable()) {
+        threadReceive.join();
+    }
+    if (threadSend.joinable()) {
+        threadSend.join();
+    }
+    cout << "Bye." << endl;
+    return 0;
+}
+
+void Send() {
+    clog << "Thread Send starts." << endl;
+    char selection;
+    while (!stopThread) {
+        cout << "Menu:\n"
+                "[1] Request for server time.\n"
+                "[2] Request for server name.\n"
+                "[3] Request for online users.\n"
+                "[4] Send a message to user X.\n"
+                "[5] Disconnect."
+             << endl;
         scanf("%c", &selection);
         getchar();
         switch (selection) {
             case '1':
-                if (Connect()) {
-                    cout << "Successfully connected to the server!" << endl;
-                    cout << "Your user number is [" << number << "], " << address << ":" << port << endl;
-                    bool innerLoop = true;
-                    while (innerLoop) {
-                        cout << "Menu:\n"
-                                "[1] Request for server time.\n"
-                                "[2] Request for server name.\n"
-                                "[3] Request for online users.\n"
-                                "[4] Send a message to user X.\n"
-                                "[5] Disconnect."
-                             << endl;
-                        scanf("%c", &selection);
-                        getchar();
-                        switch (selection) {
-                            case '1':
-                                if (!GetTime()) {
-                                    cout << "Fail to get server time!" << endl;
-                                }
-                                break;
-                            case '2':
-                                if (!GetServer()) {
-                                    cout << "Fail to get server name!" << endl;
-                                }
-                                break;
-                            case '3':
-                                if (!GetList()) {
-                                    cout << "Fail to get list of online users!" << endl;
-                                }
-                                break;
-                            case '4':
-                                Request();
-                                break;
-                            case '5':
-                                if (Disconnect()) {
-                                    cout << "Successfully disconnected to the server!" << endl;
-                                }
-                                innerLoop = false;
-                                break;
-                            default:
-                                cout << "Unknown input: '" << selection << "'. Please try again." << endl;
-                                break;
-                        }
-                    }
+                if (!GetTime()) {
+                    cout << "Fail to get server time!" << endl;
                 }
                 break;
             case '2':
-                outerLoop = false;
+                if (!GetServer()) {
+                    cout << "Fail to get server name!" << endl;
+                }
+                break;
+            case '3':
+                if (!GetList()) {
+                    cout << "Fail to get list of online users!" << endl;
+                }
+                break;
+            case '4':
+                SendMsg();
+                break;
+            case '5':
+                if (Disconnect()) {
+                    cout << "Successfully disconnected to the server!" << endl;
+                }
+                stopThread = true;
                 break;
             default:
                 cout << "Unknown input: '" << selection << "'. Please try again." << endl;
                 break;
         }
     }
-    cout << "Bye." << endl;
-    return 0;
+    clog << "Thread Send exits." << endl;
+}
+
+void Receive() {
+    clog << "Thread Receive starts." << endl;
+    char response[256];
+    int retryCount = 0;
+    while (!stopThread) {
+        int responseLength = recv(socketServer, response, 256, 0);
+        if (responseLength > 0) {
+            response[responseLength] = '\0';
+            clog << "Response: " << endl << response << endl;
+            string message = AnalyzeResponse(response);
+            messageQueue.push(message);
+            retryCount = 0;
+        } else if (responseLength == 0 || retryCount == 10) {
+            clog << "The server has closed the connection!" << endl;
+            stopThread = true;
+        } else {
+            retryCount++;
+            clog << "Error occurred when receiving: " << WSAGetLastError() << endl;
+            Sleep(500);
+        }
+    }
+    clog << "Thread Receive exits." << endl;
 }
 
 bool Connect() {
@@ -121,19 +176,8 @@ bool Connect() {
     clog << "Connecting...OK" << endl;
 
     clog << "ALOHA..." << endl;
-    char request[] = "ALOHA\r\n\r\n";
-    char response[256];
-    string headerNumber = "Number";
-    string headerAdress = "Address";
-    string headerPort = "Port";
-    if (Request(request, response)) {
-        number = GetHeader(response, headerNumber);
-        address = GetHeader(response, headerAdress);
-        port = GetHeader(response, headerPort);
-        clog << "ALOHA...OK" << endl;
-        return true;
-    }
-    return false;
+    Aloha();
+    return true;
 }
 
 bool Disconnect() {
@@ -142,65 +186,90 @@ bool Disconnect() {
     return true;
 }
 
+bool Aloha() {
+    const char request[] = "ALOHA\r\n\r\n";
+    return Request(request);
+}
+
 bool GetTime() {
-    char request[] = "ALOHA\r\n\r\n";
-    char response[256];
-    string header = "Time";
-    if (Request(request, response)) {
-        string time = GetHeader(response, header);
-        cout << time << endl;
-        return true;
-    }
-    return false;
+    char request[] = "TIME\r\n\r\n";
+    return Request(request);
 }
 
 bool GetServer() {
-    char request[] = "ALOHA\r\n\r\n";
-    char response[256];
-    string header = "Server";
-    if (Request(request, response)) {
-        string server = GetHeader(response, header);
-        cout << server << endl;
-        return true;
-    }
-    return false;
+    char request[] = "SERV\r\n\r\n";
+    return Request(request);
 }
 
 bool GetList() {
     char request[] = "LIST\r\n\r\n";
-    char response[256];
-    string keyword = "List of users online: \n";
-    if (Request(request, response)) {
-        string stringResponse = response;
-        string stringRequest = request;
-        string responseContent = stringResponse.substr(stringRequest.find(keyword) + keyword.length());
-        cout << responseContent << endl;
-        return true;
-    }
-    return false;
+    return Request(request);
 }
 
-bool Request() {
+bool SendMsg() {
     char request[] = "SEND\r\nToNumber: 0\r\nToAddress: 127.0.0.1\r\n\r\nHello";
-    char response[256];
-    // TODO: 提取有效信息
-    return Request(request, response);
+    return Request(request);
 }
 
-bool Request(const char request[], char response[]) {
-    send(socketServer, request, strlen(request), 0);
-
-    int responseLength = recv(socketServer, response, 256, 0);
-    if (responseLength > 0) {
-        response[responseLength] = '\0';
-        clog << "Response: " << response << endl;
-    }
-
+bool Request(const char request[]) {
+    clog << "Sending..." << endl;
+    send(socketServer, request, static_cast<int>(strlen(request)), 0);
+    clog << "Sending...OK" << endl;
     return true;
 }
 
-string GetHeader(const string &response, const string &header) {
-    string stringToFind = header + ": ";
+string AnalyzeResponse(const char response[]) {
+    string stringResponse = response;
+    string stringFront = stringResponse.substr(0, stringResponse.find('\r'));
+    if (stringFront == "SEND") {
+        // TODO: A message arrives. Remember to reply to it.
+        string keyword = "FromNumber";
+        string fromNumber = GetValue(stringResponse, keyword);
+        string message = GetContent(stringResponse);
+        string statusCode = "200";
+        string newResponse = statusCode + "\r\n";
+        newResponse.append("\r\n");
+        Request(newResponse.data());
+        return "A new message from user [" + fromNumber + "]: \n" + message;
+    } else {
+        // This is a response
+        string method = GetValue(stringResponse, "Method");
+        if (stringFront == "200") {
+            if (method == "ALOHA") {
+                clog << "ALOHA...OK" << endl;
+                number = GetValue(stringResponse, "Number");
+                address = GetValue(stringResponse, "Address");
+                port = GetValue(stringResponse, "Port");
+                return "Your user number is [" + number + "], " + address + ":" + port;
+            } else if (method == "TIME" || method == "SERV" || method == "LIST") {
+                return GetContent(stringResponse, method);
+            } else if (method == "SEND") {
+                string content = GetContent(stringResponse, method);
+                if (content == "200") {
+                    return "Message is delivered successfully.";
+                }
+                else if (content == "500") {
+                    return "Failed to receive the reply of target user.";
+                } else if (content == "502") {
+                    return "Failed to send message to target user. Maybe he/she is offline just now.";
+                }
+            }
+        } else if (stringFront == "404") {
+            if (method == "SEND") {
+                return "That user is offline or does not appear. Please try again!";
+            }
+        } else if (stringFront == "400") {
+            return "The server receives an unknown method: " + method;
+        }
+    }
+}
+
+string GetValue(const string &response, const string &keyword) {
+    string stringToFind = keyword + ": ";
     string temp = response.substr(response.find(stringToFind) + stringToFind.length());
-    return temp.substr(0, temp.find('\r'));
+    return temp.substr(0, temp.find('\n'));
+}
+
+string GetContent(const string &response, const string &method) {
+    return response.substr(response.find(method) + method.length() + 1);
 }

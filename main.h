@@ -7,15 +7,24 @@
 
 #include <iostream>
 #include <WinSock2.h>
+#include <thread>
+#include <mutex>
+#include <queue>
 
 using namespace std;
 
 #define SERVER_ADDRESS "127.0.0.1"
 #define SERVER_PORT 1551
 
+void Send();
+
 bool Connect();
 
+void Receive();
+
 bool Disconnect();
+
+bool Aloha();
 
 bool GetTime();
 
@@ -23,10 +32,14 @@ bool GetServer();
 
 bool GetList();
 
-bool Request();
+bool SendMsg();
 
-bool Request(const char request[], char response[]);
+bool Request(const char request[]);
 
-string GetHeader(const string &response, const string &header);
+string AnalyzeResponse(const char response[]);
+
+string GetValue(const string &response, const string &keyword);
+
+string GetContent(const string &response, const string &method = "\r\n\r");
 
 #endif //SOCKETLION_CLIENT_MAIN_H
