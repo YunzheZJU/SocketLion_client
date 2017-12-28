@@ -14,7 +14,7 @@
 using namespace std;
 
 #define SERVER_ADDRESS "222.205.56.130"
-#define SERVER_PORT 4084
+#define SERVER_PORT 1551
 
 void Send();
 

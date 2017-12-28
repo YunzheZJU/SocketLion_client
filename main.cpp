@@ -17,7 +17,9 @@ int main() {
 
     cout << "Welcome to SocketLion v1.0!\nEnter a number to select an item below." << endl;
     while (loop) {
-        cout << "Menu:\n[1] Connect to the server.\n[2] Exit." << endl;
+        cout << "[Menu]\n"
+                "[1] Connect to the server.\n"
+                "[2] Exit." << endl;
         scanf("%c", &selection);
         getchar();
 
@@ -70,7 +72,7 @@ void Send() {
     //clog << "Thread Send starts." << endl;
     char selection;
     while (!stopThread) {
-        cout << "Menu:\n"
+        cout << "[Menu]\n"
                 "[1] Request for server time.\n"
                 "[2] Request for server name.\n"
                 "[3] Request for online users.\n"
@@ -146,12 +148,12 @@ bool Connect() {
     // Load winsocket dll
     //clog << "Loading..." << endl;
     if (WSAStartup(version, &data) == SOCKET_ERROR) {
-        //cerr << "[ERROR]" << "Error occurred in initialization: " << WSAGetLastError() << "." << endl;
+        cerr << "[ERROR]" << "Error occurred in initialization: " << WSAGetLastError() << "." << endl;
         return false;
     } else {
         // Check the lowest and highest byte of the version in HEX
         if (LOBYTE(data.wVersion) != 2 || HIBYTE(data.wVersion) != 2) {
-            //cerr << "[ERROR]" << "Could not find a usable version of Winsock.dll: " << WSAGetLastError() << "." << endl;
+            cerr << "[ERROR]" << "Could not find a usable version of Winsock.dll: " << WSAGetLastError() << "." << endl;
             WSACleanup();
             return false;
         }
@@ -162,7 +164,7 @@ bool Connect() {
     //clog << "Creating..." << endl;
     socketServer = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (socketServer == INVALID_SOCKET) {
-        //cerr << "[ERROR]" << "Error occurred in creating socket: " << WSAGetLastError() << "." << endl;
+        cerr << "[ERROR]" << "Error occurred in creating socket: " << WSAGetLastError() << "." << endl;
         WSACleanup();
         return false;
     }
@@ -177,7 +179,7 @@ bool Connect() {
     // Connect to the server
     //clog << "Connecting..." << endl;
     if (connect(socketServer, (sockaddr *) &serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
-        //cerr << "[ERROR]" << "Error occurred in Connecting: " << WSAGetLastError() << "." << endl;
+        cerr << "[ERROR]" << "Error occurred in Connecting: " << WSAGetLastError() << "." << endl;
         WSACleanup();
         return false;
     }
