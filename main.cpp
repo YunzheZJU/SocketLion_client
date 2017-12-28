@@ -221,46 +221,49 @@ bool Request(const char request[]) {
 string AnalyzeResponse(const char response[]) {
     string stringResponse = response;
     string stringFront = stringResponse.substr(0, stringResponse.find('\r'));
-    if (stringFront == "SEND") {
-        // TODO: A message arrives. Remember to reply to it.
-        string keyword = "FromNumber";
-        string fromNumber = GetValue(stringResponse, keyword);
+    // This is a response
+    string method = GetValue(stringResponse, "Method");
+    if (stringFront == "302") {
+        string keywordFromNumber = "FromNumber";
+        string keywordFromAddress = "FromeAddress";
+        string fromNumber = GetValue(stringResponse, keywordFromNumber);
+        string fromAddress = GetValue(stringResponse, keywordFromAddress);
         string message = GetContent(stringResponse);
-        string statusCode = "200";
-        string newResponse = statusCode + "\r\n";
+        string newResponse;
+        newResponse.append("REPLY\r\n");
+        newResponse.append("ToNumber: " + fromNumber + "\r\n");
+        newResponse.append("ToAddress: " + fromAddress + "\r\n");
         newResponse.append("\r\n");
+        newResponse.append(message);
         Request(newResponse.data());
         return "A new message from user [" + fromNumber + "]: \n" + message;
-    } else {
-        // This is a response
-        string method = GetValue(stringResponse, "Method");
-        if (stringFront == "200") {
-            if (method == "ALOHA") {
-                clog << "ALOHA...OK" << endl;
-                number = GetValue(stringResponse, "Number");
-                address = GetValue(stringResponse, "Address");
-                port = GetValue(stringResponse, "Port");
-                return "Your user number is [" + number + "], " + address + ":" + port;
-            } else if (method == "TIME" || method == "SERV" || method == "LIST") {
-                return GetContent(stringResponse, method);
-            } else if (method == "SEND") {
-                string content = GetContent(stringResponse, method);
-                if (content == "200") {
-                    return "Message is delivered successfully.";
-                }
-                else if (content == "500") {
-                    return "Failed to receive the reply of target user.";
-                } else if (content == "502") {
-                    return "Failed to send message to target user. Maybe he/she is offline just now.";
-                }
+    } else if (stringFront == "200") {
+        if (method == "ALOHA") {
+            clog << "ALOHA...OK" << endl;
+            number = GetValue(stringResponse, "Number");
+            address = GetValue(stringResponse, "Address");
+            port = GetValue(stringResponse, "Port");
+            return "Your user number is [" + number + "], " + address + ":" + port;
+        } else if (method == "TIME" || method == "SERV" || method == "LIST") {
+            return GetContent(stringResponse, method);
+        } else if (method == "SEND") {
+            string content = GetContent(stringResponse, method);
+            if (content == "200") {
+                return "Message is delivered successfully.";
+            } else if (content == "500") {
+                return "Failed to receive the reply of target user.";
+            } else if (content == "502") {
+                return "Failed to send message to target user. Maybe he/she is offline just now.";
             }
-        } else if (stringFront == "404") {
-            if (method == "SEND") {
-                return "That user is offline or does not appear. Please try again!";
-            }
-        } else if (stringFront == "400") {
-            return "The server receives an unknown method: " + method;
+        } else if (method == "REPLY") {
+            // TODO: Receive the check message.
         }
+    } else if (stringFront == "404") {
+        if (method == "SEND") {
+            return "That user is offline or does not appear. Please try again!";
+        }
+    } else if (stringFront == "400") {
+        return "The server receives an unknown method: " + method;
     }
 }
 
