@@ -24,14 +24,20 @@ int main() {
         switch (selection) {
             case '1':
                 if (Connect()) {
-                    clog << "Thread Send starts." << endl;
                     cout << "Successfully connected to the server!" << endl;
+                    if (threadSend.joinable()) {
+                        threadSend.join();
+                    }
+                    if (threadReceive.joinable()) {
+                        threadReceive.join();
+                    }
                     threadSend = thread(Send);
                     threadReceive = thread(Receive);
                     stopThread = false;
                 }
                 break;
             case '2':
+                cout << "loop = false;" << endl;
                 loop = false;
                 break;
             default:
@@ -44,7 +50,7 @@ int main() {
             if (!messageQueue.empty()) {
                 string message = messageQueue.front();
                 messageQueue.pop();
-                cout << "MessageQueue: " << endl << message << endl;
+                cout << "[Information]" << endl << message << endl;
             } else {
                 Sleep(100);
             }
@@ -91,7 +97,9 @@ void Send() {
                 }
                 break;
             case '4':
-                SendMsg();
+                if (!SendMsg()) {
+                    cout << "Fail to send a message!" << endl;
+                }
                 break;
             case '5':
                 if (Disconnect()) {
@@ -121,6 +129,7 @@ void Receive() {
             retryCount = 0;
         } else if (responseLength == 0 || retryCount == 10) {
             clog << "The server has closed the connection!" << endl;
+            cout << "The server has closed the connection! Enter 5 to disconnect!" << endl;
             stopThread = true;
         } else {
             retryCount++;
@@ -187,28 +196,46 @@ bool Disconnect() {
 }
 
 bool Aloha() {
-    const char request[] = "ALOHA\r\n\r\n";
+    const char request[] = "ALOHA\r\n\r\n\r\t\n";
     return Request(request);
 }
 
 bool GetTime() {
-    char request[] = "TIME\r\n\r\n";
+    char request[] = "TIME\r\n\r\n\r\t\n";
     return Request(request);
 }
 
 bool GetServer() {
-    char request[] = "SERV\r\n\r\n";
+    char request[] = "SERV\r\n\r\n\r\t\n";
     return Request(request);
 }
 
 bool GetList() {
-    char request[] = "LIST\r\n\r\n";
+    char request[] = "LIST\r\n\r\n\r\t\n";
     return Request(request);
 }
 
 bool SendMsg() {
-    char request[] = "SEND\r\nToNumber: 0\r\nToAddress: 127.0.0.1\r\n\r\nHello";
-    return Request(request);
+    string toNumber;
+    string toAddress;
+    string toPort;
+    string message;
+    cout << "Enter the number of the user you want to send a message to:" << endl;
+    getline(cin, toNumber);
+    cout << "Enter the address of the user:" << endl;
+    getline(cin, toAddress);
+    cout << "Enter the port of the user:" << endl;
+    getline(cin, toPort);
+    cout << "What's your message?" << endl;
+    getline(cin, message);
+    string stringRequest = "SEND\r\n";
+    stringRequest.append("ToNumber: " + toNumber + "\r\n");
+    stringRequest.append("ToAddress: " + toAddress + "\r\n");
+    stringRequest.append("ToPort: " + toPort + "\r\n");
+    stringRequest.append("\r\n");
+    stringRequest.append(message);
+    stringRequest.append("\r\t\n");
+    return Request(stringRequest.data());
 }
 
 bool Request(const char request[]) {
@@ -220,6 +247,7 @@ bool Request(const char request[]) {
 
 string AnalyzeResponse(const char response[]) {
     string stringResponse = response;
+    stringResponse.resize(stringResponse.size() - 3);
     string stringFront = stringResponse.substr(0, stringResponse.find('\r'));
     // This is a response
     string method = GetValue(stringResponse, "Method", '\n');
@@ -227,24 +255,30 @@ string AnalyzeResponse(const char response[]) {
         string separator = "\r\n\r\n";
         string keywordFromNumber = "FromNumber";
         string keywordFromAddress = "FromAddress";
+        string keywordFromPort = "FromPort";
         string fromNumber = GetValue(stringResponse, keywordFromNumber);
         string fromAddress = GetValue(stringResponse, keywordFromAddress);
+        string fromPort = GetValue(stringResponse, keywordFromPort);
         string message = GetContent(stringResponse, method);
         string newResponse;
         newResponse.append("REPLY\r\n");
         newResponse.append("ToNumber: " + fromNumber + "\r\n");
         newResponse.append("ToAddress: " + fromAddress + "\r\n");
+        newResponse.append("ToPort: " + fromPort + "\r\n");
         newResponse.append("\r\n");
         newResponse.append(message);
+        newResponse.append("\r\t\n");
         Request(newResponse.data());
-        return "A new message from user [" + fromNumber + "]: \n" + message;
+        return "A new message from user [" + fromNumber + "] @ " + fromAddress + ":" + fromPort + "\n"
+               + "Here is the message: \n"
+               + message;
     } else if (stringFront == "200") {
         if (method == "ALOHA") {
             clog << "ALOHA...OK" << endl;
             number = GetValue(stringResponse, "Number");
             address = GetValue(stringResponse, "Address");
             port = GetValue(stringResponse, "Port");
-            return "Your user number is [" + number + "], " + address + ":" + port;
+            return "Your user number is [" + number + "] @ " + address + ":" + port;
         } else if (method == "TIME" || method == "SERV" || method == "LIST") {
             return GetContent(stringResponse, method);
         } else if (method == "SEND") {
@@ -259,18 +293,25 @@ string AnalyzeResponse(const char response[]) {
         } else if (method == "REPLY") {
             // Receive the check message
             string keywordFromNumber = "FromNumber";
-            string keywordFromAddress = "FromeAddress";
+            string keywordFromAddress = "FromAddress";
+            string keywordFromPort = "FromPort";
             string fromNumber = GetValue(stringResponse, keywordFromNumber);
             string fromAddress = GetValue(stringResponse, keywordFromAddress);
+            string fromPort = GetValue(stringResponse, keywordFromPort);
             string message = GetContent(stringResponse, method);
-            return "The message sent to user [" + fromNumber + "] is succeeded.\nHere is the message: \n" + message;
+            return "The message to user [" + fromNumber + "] @ " + fromAddress + ":" + fromPort + " is succeeded.\n"
+                   + "Here is the message: \n"
+                   + message;
         }
     } else if (stringFront == "404") {
         if (method == "SEND") {
             return "That user is offline or does not appear. Please try again!";
         }
+        else if (method == "REPLY") {
+            return "The original user is offline or does not appear!";
+        }
     } else if (stringFront == "400") {
-        return "The server receives an unknown method: " + method;
+        return "The server receives an unknown method: " + method + ".";
     }
 }
 
