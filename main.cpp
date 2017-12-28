@@ -124,7 +124,7 @@ void Receive() {
             stopThread = true;
         } else {
             retryCount++;
-            clog << "Error occurred when receiving: " << WSAGetLastError() << endl;
+            clog << "Error occurred when receiving: " << WSAGetLastError() << ". Retry: " << retryCount << endl;
             Sleep(500);
         }
     }
@@ -222,13 +222,14 @@ string AnalyzeResponse(const char response[]) {
     string stringResponse = response;
     string stringFront = stringResponse.substr(0, stringResponse.find('\r'));
     // This is a response
-    string method = GetValue(stringResponse, "Method");
+    string method = GetValue(stringResponse, "Method", '\n');
     if (stringFront == "302") {
+        string separator = "\r\n\r\n";
         string keywordFromNumber = "FromNumber";
-        string keywordFromAddress = "FromeAddress";
+        string keywordFromAddress = "FromAddress";
         string fromNumber = GetValue(stringResponse, keywordFromNumber);
         string fromAddress = GetValue(stringResponse, keywordFromAddress);
-        string message = GetContent(stringResponse);
+        string message = GetContent(stringResponse, method);
         string newResponse;
         newResponse.append("REPLY\r\n");
         newResponse.append("ToNumber: " + fromNumber + "\r\n");
@@ -256,7 +257,13 @@ string AnalyzeResponse(const char response[]) {
                 return "Failed to send message to target user. Maybe he/she is offline just now.";
             }
         } else if (method == "REPLY") {
-            // TODO: Receive the check message.
+            // Receive the check message
+            string keywordFromNumber = "FromNumber";
+            string keywordFromAddress = "FromeAddress";
+            string fromNumber = GetValue(stringResponse, keywordFromNumber);
+            string fromAddress = GetValue(stringResponse, keywordFromAddress);
+            string message = GetContent(stringResponse, method);
+            return "The message sent to user [" + fromNumber + "] is succeeded.\nHere is the message: \n" + message;
         }
     } else if (stringFront == "404") {
         if (method == "SEND") {
@@ -267,10 +274,10 @@ string AnalyzeResponse(const char response[]) {
     }
 }
 
-string GetValue(const string &response, const string &keyword) {
+string GetValue(const string &response, const string &keyword, const char separater) {
     string stringToFind = keyword + ": ";
     string temp = response.substr(response.find(stringToFind) + stringToFind.length());
-    return temp.substr(0, temp.find('\n'));
+    return temp.substr(0, temp.find(separater));
 }
 
 string GetContent(const string &response, const string &method) {
