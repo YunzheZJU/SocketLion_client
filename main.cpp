@@ -37,7 +37,6 @@ int main() {
                 }
                 break;
             case '2':
-                cout << "loop = false;" << endl;
                 loop = false;
                 break;
             default:
@@ -68,7 +67,7 @@ int main() {
 }
 
 void Send() {
-    clog << "Thread Send starts." << endl;
+    //clog << "Thread Send starts." << endl;
     char selection;
     while (!stopThread) {
         cout << "Menu:\n"
@@ -112,32 +111,32 @@ void Send() {
                 break;
         }
     }
-    clog << "Thread Send exits." << endl;
+    //clog << "Thread Send exits." << endl;
 }
 
 void Receive() {
-    clog << "Thread Receive starts." << endl;
+    //clog << "Thread Receive starts." << endl;
     char response[256];
     int retryCount = 0;
     while (!stopThread) {
         int responseLength = recv(socketServer, response, 256, 0);
         if (responseLength > 0) {
             response[responseLength] = '\0';
-            clog << "Response: " << endl << response << endl;
+            //clog << "Response: " << endl << response << endl;
             string message = AnalyzeResponse(response);
             messageQueue.push(message);
             retryCount = 0;
         } else if (responseLength == 0 || retryCount == 10) {
-            clog << "The server has closed the connection!" << endl;
+            //clog << "The server has closed the connection!" << endl;
             cout << "The server has closed the connection! Enter 5 to disconnect!" << endl;
             stopThread = true;
         } else {
             retryCount++;
-            clog << "Error occurred when receiving: " << WSAGetLastError() << ". Retry: " << retryCount << endl;
+            //clog << "Error occurred when receiving: " << WSAGetLastError() << ". Retry: " << retryCount << endl;
             Sleep(500);
         }
     }
-    clog << "Thread Receive exits." << endl;
+    //clog << "Thread Receive exits." << endl;
 }
 
 bool Connect() {
@@ -145,29 +144,29 @@ bool Connect() {
     WSADATA data{};
 
     // Load winsocket dll
-    clog << "Loading..." << endl;
+    //clog << "Loading..." << endl;
     if (WSAStartup(version, &data) == SOCKET_ERROR) {
-        cerr << "Error occurred in initialization: " << WSAGetLastError() << "." << endl;
+        //cerr << "[ERROR]" << "Error occurred in initialization: " << WSAGetLastError() << "." << endl;
         return false;
     } else {
         // Check the lowest and highest byte of the version in HEX
         if (LOBYTE(data.wVersion) != 2 || HIBYTE(data.wVersion) != 2) {
-            cerr << "Could not find a usable version of Winsock.dll: " << WSAGetLastError() << "." << endl;
+            //cerr << "[ERROR]" << "Could not find a usable version of Winsock.dll: " << WSAGetLastError() << "." << endl;
             WSACleanup();
             return false;
         }
     }
-    clog << "Loading...OK" << endl;
+    //clog << "Loading...OK" << endl;
 
     // Create socket based on TCP
-    clog << "Creating..." << endl;
+    //clog << "Creating..." << endl;
     socketServer = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (socketServer == INVALID_SOCKET) {
-        cerr << "Error occurred in creating socket: " << WSAGetLastError() << "." << endl;
+        //cerr << "[ERROR]" << "Error occurred in creating socket: " << WSAGetLastError() << "." << endl;
         WSACleanup();
         return false;
     }
-    clog << "Creating...OK" << endl;
+    //clog << "Creating...OK" << endl;
 
     // Prepare for the connection
     sockaddr_in serverAddress{};
@@ -176,15 +175,15 @@ bool Connect() {
     serverAddress.sin_addr.S_un.S_addr = inet_addr(SERVER_ADDRESS);
 
     // Connect to the server
-    clog << "Connecting..." << endl;
+    //clog << "Connecting..." << endl;
     if (connect(socketServer, (sockaddr *) &serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
-        cerr << "Error occurred in Connecting: " << WSAGetLastError() << "." << endl;
+        //cerr << "[ERROR]" << "Error occurred in Connecting: " << WSAGetLastError() << "." << endl;
         WSACleanup();
         return false;
     }
-    clog << "Connecting...OK" << endl;
+    //clog << "Connecting...OK" << endl;
 
-    clog << "ALOHA..." << endl;
+    //clog << "ALOHA..." << endl;
     Aloha();
     return true;
 }
@@ -239,9 +238,9 @@ bool SendMsg() {
 }
 
 bool Request(const char request[]) {
-    clog << "Sending..." << endl;
+    //clog << "Sending..." << endl;
     send(socketServer, request, static_cast<int>(strlen(request)), 0);
-    clog << "Sending...OK" << endl;
+    //clog << "Sending...OK" << endl;
     return true;
 }
 
@@ -274,7 +273,7 @@ string AnalyzeResponse(const char response[]) {
                + message;
     } else if (stringFront == "200") {
         if (method == "ALOHA") {
-            clog << "ALOHA...OK" << endl;
+            //clog << "ALOHA...OK" << endl;
             number = GetValue(stringResponse, "Number");
             address = GetValue(stringResponse, "Address");
             port = GetValue(stringResponse, "Port");
@@ -306,8 +305,7 @@ string AnalyzeResponse(const char response[]) {
     } else if (stringFront == "404") {
         if (method == "SEND") {
             return "That user is offline or does not appear. Please try again!";
-        }
-        else if (method == "REPLY") {
+        } else if (method == "REPLY") {
             return "The original user is offline or does not appear!";
         }
     } else if (stringFront == "400") {
