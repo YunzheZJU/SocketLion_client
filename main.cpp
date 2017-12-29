@@ -1,6 +1,7 @@
 #include "main.h"
 
 SOCKET socketServer;
+string dataPool;
 string number;
 string address;
 string port;
@@ -121,12 +122,22 @@ void Receive() {
     char response[256];
     int retryCount = 0;
     while (!stopThread) {
+        // In some cases, many responses will be packed together so it is necessary to buffer and unpacked them by endtag
         int responseLength = recv(socketServer, response, 256, 0);
         if (responseLength > 0) {
             response[responseLength] = '\0';
-            //clog << "Response: " << endl << response << endl;
-            string message = AnalyzeResponse(response);
-            messageQueue.push(message);
+//            clog << "Response: " << endl << response << endl;
+            string dataAppend = response;
+            dataPool += dataAppend;
+            auto endTag = dataPool.find("\r\t\n");
+            while (endTag != dataPool.npos) {
+                string stringResponse = dataPool.substr(0, endTag);
+                dataPool.erase(0, endTag + 3);
+//                cout << "dataPool: " << dataPool << endl;
+                string message = AnalyzeResponse(stringResponse);
+                messageQueue.push(message);
+                endTag = dataPool.find("\r\t\n");
+            }
             retryCount = 0;
         } else if (responseLength == 0 || retryCount == 10) {
             //clog << "The server has closed the connection!" << endl;
@@ -187,6 +198,7 @@ bool Connect() {
 
     //clog << "ALOHA..." << endl;
     Aloha();
+    dataPool = "";
     return true;
 }
 
@@ -203,7 +215,12 @@ bool Aloha() {
 
 bool GetTime() {
     char request[] = "TIME\r\n\r\n\r\t\n";
-    return Request(request);
+    for (int i = 0; i < 100; i++) {
+        cout << i << endl;
+        Request(request);
+    }
+    return true;
+//    return Request(request);
 }
 
 bool GetServer() {
@@ -246,21 +263,19 @@ bool Request(const char request[]) {
     return true;
 }
 
-string AnalyzeResponse(const char response[]) {
-    string stringResponse = response;
-    stringResponse.resize(stringResponse.size() - 3);
-    string stringFront = stringResponse.substr(0, stringResponse.find('\r'));
+string AnalyzeResponse(const string &response) {
+    string stringFront = response.substr(0, response.find('\r'));
     // This is a response
-    string method = GetValue(stringResponse, "Method", '\n');
+    string method = GetValue(response, "Method", '\n');
     if (stringFront == "302") {
         string separator = "\r\n\r\n";
         string keywordFromNumber = "FromNumber";
         string keywordFromAddress = "FromAddress";
         string keywordFromPort = "FromPort";
-        string fromNumber = GetValue(stringResponse, keywordFromNumber);
-        string fromAddress = GetValue(stringResponse, keywordFromAddress);
-        string fromPort = GetValue(stringResponse, keywordFromPort);
-        string message = GetContent(stringResponse, method);
+        string fromNumber = GetValue(response, keywordFromNumber);
+        string fromAddress = GetValue(response, keywordFromAddress);
+        string fromPort = GetValue(response, keywordFromPort);
+        string message = GetContent(response, method);
         string newResponse;
         newResponse.append("REPLY\r\n");
         newResponse.append("ToNumber: " + fromNumber + "\r\n");
@@ -276,14 +291,14 @@ string AnalyzeResponse(const char response[]) {
     } else if (stringFront == "200") {
         if (method == "ALOHA") {
             //clog << "ALOHA...OK" << endl;
-            number = GetValue(stringResponse, "Number");
-            address = GetValue(stringResponse, "Address");
-            port = GetValue(stringResponse, "Port");
+            number = GetValue(response, "Number");
+            address = GetValue(response, "Address");
+            port = GetValue(response, "Port");
             return "Your user number is [" + number + "] @ " + address + ":" + port;
         } else if (method == "TIME" || method == "SERV" || method == "LIST") {
-            return GetContent(stringResponse, method);
+            return GetContent(response, method);
         } else if (method == "SEND") {
-            string content = GetContent(stringResponse, method);
+            string content = GetContent(response, method);
             if (content == "200") {
                 return "Message is delivered successfully.";
             } else if (content == "500") {
@@ -296,10 +311,10 @@ string AnalyzeResponse(const char response[]) {
             string keywordFromNumber = "FromNumber";
             string keywordFromAddress = "FromAddress";
             string keywordFromPort = "FromPort";
-            string fromNumber = GetValue(stringResponse, keywordFromNumber);
-            string fromAddress = GetValue(stringResponse, keywordFromAddress);
-            string fromPort = GetValue(stringResponse, keywordFromPort);
-            string message = GetContent(stringResponse, method);
+            string fromNumber = GetValue(response, keywordFromNumber);
+            string fromAddress = GetValue(response, keywordFromAddress);
+            string fromPort = GetValue(response, keywordFromPort);
+            string message = GetContent(response, method);
             return "The message to user [" + fromNumber + "] @ " + fromAddress + ":" + fromPort + " is succeeded.\n"
                    + "Here is the message: \n"
                    + message;

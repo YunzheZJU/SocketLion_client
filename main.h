@@ -36,7 +36,7 @@ bool SendMsg();
 
 bool Request(const char request[]);
 
-string AnalyzeResponse(const char response[]);
+string AnalyzeResponse(const string &response);
 
 string GetValue(const string &response, const string &keyword, const char separater = '\r');
 
