@@ -38,7 +38,7 @@ bool Request(const char request[]);
 
 string AnalyzeResponse(const string &response);
 
-string GetValue(const string &response, const string &keyword, const char separater = '\r');
+string GetValue(const string &response, const string &keyword, const char &separater = '\r');
 
 string GetContent(const string &response, const string &method = "\r\n\r");
 

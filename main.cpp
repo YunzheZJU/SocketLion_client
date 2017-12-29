@@ -330,7 +330,7 @@ string AnalyzeResponse(const string &response) {
     }
 }
 
-string GetValue(const string &response, const string &keyword, const char separater) {
+string GetValue(const string &response, const string &keyword, const char &separater) {
     string stringToFind = keyword + ": ";
     string temp = response.substr(response.find(stringToFind) + stringToFind.length());
     return temp.substr(0, temp.find(separater));
