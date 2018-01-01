@@ -9,6 +9,7 @@ queue<string> messageQueue;
 thread threadSend;
 thread threadReceive;
 bool stopThread = true;
+int count = 0;
 
 int main() {
     cout << "Client start." << endl;
@@ -56,7 +57,6 @@ int main() {
             } else {
                 Sleep(100);
             }
-
         }
     }
     if (threadReceive.joinable()) {
@@ -122,7 +122,7 @@ void Receive() {
     char response[256];
     int retryCount = 0;
     while (!stopThread) {
-        // In some cases, many responses will be packed together so it is necessary to buffer and unpacked them by endtag
+        // In some cases, many responses will be packed together so it is necessary to buffer and unpacked them
         int responseLength = recv(socketServer, response, 256, 0);
         if (responseLength > 0) {
             response[responseLength] = '\0';
@@ -296,6 +296,8 @@ string AnalyzeResponse(const string &response) {
             port = GetValue(response, "Port");
             return "Your user number is [" + number + "] @ " + address + ":" + port;
         } else if (method == "TIME" || method == "SERV" || method == "LIST") {
+            count++;
+            cout << count << endl;
             return GetContent(response, method);
         } else if (method == "SEND") {
             string content = GetContent(response, method);
