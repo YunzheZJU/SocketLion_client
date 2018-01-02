@@ -10,6 +10,7 @@
 #include <thread>
 #include <mutex>
 #include <queue>
+#include <sstream>
 
 using namespace std;
 
@@ -41,5 +42,7 @@ string AnalyzeResponse(const string &response);
 string GetValue(const string &response, const string &keyword, const char &separater = '\r');
 
 string GetContent(const string &response, const string &method = "\r\n\r");
+
+int string2int(const string &string_temp);
 
 #endif //SOCKETLION_CLIENT_MAIN_H

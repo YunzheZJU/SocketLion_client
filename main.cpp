@@ -153,6 +153,13 @@ void Receive() {
 }
 
 bool Connect() {
+    string serverAddress;
+    string serverPort;
+    cout << "Enter the address of the server:" << endl;
+    getline(cin, serverAddress);
+    cout << "Enter the port of the server:" << endl;
+    getline(cin, serverPort);
+
     WORD version = MAKEWORD(2, 2);
     WSADATA data{};
 
@@ -182,14 +189,14 @@ bool Connect() {
     //clog << "Creating...OK" << endl;
 
     // Prepare for the connection
-    sockaddr_in serverAddress{};
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(SERVER_PORT);
-    serverAddress.sin_addr.S_un.S_addr = inet_addr(SERVER_ADDRESS);
+    sockaddr_in server{};
+    server.sin_family = AF_INET;
+    server.sin_port = htons(static_cast<u_short>(string2int(serverPort)));
+    server.sin_addr.S_un.S_addr = inet_addr(serverAddress.data());
 
     // Connect to the server
     //clog << "Connecting..." << endl;
-    if (connect(socketServer, (sockaddr *) &serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
+    if (connect(socketServer, (sockaddr *) &server, sizeof(server)) == SOCKET_ERROR) {
         cerr << "[ERROR]" << "Error occurred in Connecting: " << WSAGetLastError() << "." << endl;
         WSACleanup();
         return false;
@@ -215,12 +222,12 @@ bool Aloha() {
 
 bool GetTime() {
     char request[] = "TIME\r\n\r\n\r\t\n";
-    for (int i = 0; i < 100; i++) {
-        cout << i << endl;
-        Request(request);
-    }
-    return true;
-//    return Request(request);
+//    for (int i = 0; i < 100; i++) {
+//        cout << i << endl;
+//        Request(request);
+//    }
+//    return true;
+    return Request(request);
 }
 
 bool GetServer() {
@@ -340,4 +347,11 @@ string GetValue(const string &response, const string &keyword, const char &separ
 
 string GetContent(const string &response, const string &method) {
     return response.substr(response.find(method) + method.length() + 1);
+}
+
+int string2int(const string &string_temp) {
+    int integer;
+    stringstream stream(string_temp);
+    stream >> integer;
+    return integer;
 }
